@@ -2,6 +2,7 @@
 
   python -m reposage.cli index <repo_path>     # ingest + chunk + index a repo
   python -m reposage.cli stats                  # show what's indexed
+  python -m reposage.cli ask "<question>"       # hybrid-retrieve and answer
 """
 import sys
 import time
@@ -21,7 +22,7 @@ def cmd_index(repo: str):
     if not chunks:
         print("      nothing to index — is the path right?")
         return
-    print(f"[2/2] Embedding (dense + BM25) + indexing into Qdrant ...")
+    print("[2/2] Embedding (dense + BM25) + indexing into Qdrant ...")
     n = index_chunks(chunks)
     print(f"Done: indexed {n} chunks in {time.time() - t0:.1f}s")
     print(f"      collection='{config.collection}'  store='{config.qdrant_url or config.qdrant_path}'")
@@ -36,11 +37,36 @@ def cmd_stats():
     print(f"collection='{config.collection}'  points={info.points_count}")
 
 
+def cmd_ask(question: str):
+    from .retrieve import Retriever
+
+    hits = Retriever().search(question)
+    if not hits:
+        print("No relevant code found — did you index a repo first?")
+        return
+
+    print(f"\nTop {len(hits)} sources (hybrid dense+BM25, RRF-fused):")
+    for h in hits:
+        sym = f"  ({h.symbol})" if h.symbol else ""
+        print(f"  {h.score:.3f}  {h.file_path}:{h.start_line}-{h.end_line}{sym}")
+
+    if not config.anthropic_api_key:
+        print("\n[retrieval only — set ANTHROPIC_API_KEY in .env to generate an answer]")
+        return
+
+    from .generate import answer
+
+    print("\n--- Answer ---")
+    print(answer(question, hits))
+
+
 def main():
     if len(sys.argv) >= 3 and sys.argv[1] == "index":
         cmd_index(sys.argv[2])
     elif len(sys.argv) >= 2 and sys.argv[1] == "stats":
         cmd_stats()
+    elif len(sys.argv) >= 3 and sys.argv[1] == "ask":
+        cmd_ask(" ".join(sys.argv[2:]))
     else:
         print(__doc__)
         sys.exit(1)

@@ -51,7 +51,7 @@ The first index downloads small embedding models (~100 MB) once, then runs on CP
 ## Roadmap
 
 - [x] **Phase 1** — ingestion, AST-aware chunking, hybrid (dense + BM25) indexing
-- [ ] **Phase 2** — hybrid retrieval + RRF + grounded, cited answers (Claude)
+- [x] **Phase 2** — hybrid retrieval + RRF + grounded, cited answers (Claude). Retrieval verified; add `ANTHROPIC_API_KEY` to `.env` for the answer step.
 - [ ] **Phase 3** — RAGAS evaluation harness + golden question set + config comparison
 - [ ] **Phase 4** — selective agentic loop (LangGraph self-RAG)
 - [ ] **Phase 5** — FastAPI + minimal web UI + deployment
