@@ -4,6 +4,9 @@ The prompt is engineered to fight hallucination: the model must answer ONLY from
 the retrieved code, cite sources inline as [path:start-end], and admit when the
 context doesn't contain the answer. That "say you don't know" instruction is the
 single most important line for trustworthy RAG.
+
+`complete()` is the provider-agnostic primitive (Gemini default, Anthropic
+optional), reused by answer generation AND by the eval's LLM judge.
 """
 from typing import List
 
@@ -22,6 +25,41 @@ Rules:
 """
 
 
+def complete(system: str, user: str, max_tokens: int = 1024) -> str:
+    """Single-shot LLM completion for the configured provider."""
+    if config.llm_provider == "gemini":
+        from google import genai
+        from google.genai import types
+
+        client = genai.Client(api_key=config.gemini_api_key)
+        resp = client.models.generate_content(
+            model=config.gemini_model,
+            contents=user,
+            config=types.GenerateContentConfig(
+                system_instruction=system,
+                max_output_tokens=max_tokens,
+                # 2.5-flash "thinks" by default, which can eat a small token budget
+                # and return empty text — disable it for direct, cheaper output.
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
+        )
+        return resp.text or ""
+
+    if config.llm_provider == "anthropic":
+        import anthropic
+
+        client = anthropic.Anthropic(api_key=config.anthropic_api_key)
+        msg = client.messages.create(
+            model=config.anthropic_model,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+        return "".join(b.text for b in msg.content if b.type == "text")
+
+    raise ValueError(f"Unknown llm_provider: {config.llm_provider!r}")
+
+
 def build_context(hits: List[Hit]) -> str:
     blocks = []
     for i, h in enumerate(hits, 1):
@@ -35,31 +73,4 @@ def build_context(hits: List[Hit]) -> str:
 def answer(query: str, hits: List[Hit]) -> str:
     context = build_context(hits)
     user = f"# Retrieved code context\n\n{context}\n\n# Question\n{query}"
-
-    if config.llm_provider == "gemini":
-        from google import genai
-        from google.genai import types
-
-        client = genai.Client(api_key=config.gemini_api_key)
-        resp = client.models.generate_content(
-            model=config.gemini_model,
-            contents=user,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM, max_output_tokens=1024
-            ),
-        )
-        return resp.text or ""
-
-    if config.llm_provider == "anthropic":
-        import anthropic
-
-        client = anthropic.Anthropic(api_key=config.anthropic_api_key)
-        msg = client.messages.create(
-            model=config.anthropic_model,
-            max_tokens=1024,
-            system=SYSTEM,
-            messages=[{"role": "user", "content": user}],
-        )
-        return "".join(b.text for b in msg.content if b.type == "text")
-
-    raise ValueError(f"Unknown llm_provider: {config.llm_provider!r}")
+    return complete(SYSTEM, user)

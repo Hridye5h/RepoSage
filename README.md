@@ -49,7 +49,7 @@ Every mode finds the right file within the top 8, but **hybrid ranks it highest*
 (MRR 0.81 vs 0.60 sparse / 0.75 dense) — proving the dense+BM25+RRF design rather
 than asserting it. Reproduce: `python -m reposage.eval.retrieval_eval`.
 
-_(Next: LLM-judged answer metrics via RAGAS — faithfulness, context precision/recall, answer relevancy.)_
+**Answer quality** (LLM-judged, 6 questions): **faithfulness 1.00, answer-relevancy 1.00** — answers stay grounded in the retrieved code with no hallucination (`python -m reposage.eval.answer_eval`). A separate `chunking_eval.py` compares AST vs naive fixed-size chunking (near-tie on this small repo; AST's edge grows on larger codebases, matching the literature's modest gains — reported honestly rather than oversold).
 
 ## Quickstart
 
@@ -69,7 +69,7 @@ The first index downloads small embedding models (~100 MB) once, then runs on CP
 
 - [x] **Phase 1** — ingestion, AST-aware chunking, hybrid (dense + BM25) indexing
 - [x] **Phase 2** — hybrid retrieval + RRF + grounded, cited answers (Gemini free tier; provider-pluggable). Verified end-to-end.
-- [~] **Phase 3** — evaluation harness. Retrieval metrics (table above) done; RAGAS answer-quality (faithfulness, relevancy) next.
+- [x] **Phase 3** — evaluation harness: retrieval metrics (Hit/MRR/Recall, AST-vs-fixed) + LLM-judged answer quality (faithfulness, relevancy).
 - [ ] **Phase 4** — selective agentic loop (LangGraph self-RAG)
 - [ ] **Phase 5** — FastAPI + minimal web UI + deployment
 
