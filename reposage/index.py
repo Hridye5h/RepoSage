@@ -3,9 +3,12 @@ so we can do hybrid retrieval (fused with RRF) at query time.
 
 Local mode (QdrantClient(path=...)) needs zero infrastructure — great for dev.
 Set REPOSAGE_QDRANT_URL to point at a real server/cluster for production.
+
+`collection` is parameterised so the eval can build separate indexes (AST vs
+fixed-size chunking) and compare them.
 """
 import uuid
-from typing import List
+from typing import List, Optional
 
 from qdrant_client import QdrantClient, models
 
@@ -20,15 +23,14 @@ def get_client() -> QdrantClient:
     return QdrantClient(path=config.qdrant_path)  # on-disk local store
 
 
-def ensure_collection(client: QdrantClient, dim: int, recreate: bool = False):
-    exists = client.collection_exists(config.collection)
+def ensure_collection(client: QdrantClient, dim: int, collection: str, recreate: bool = False):
+    exists = client.collection_exists(collection)
     if exists and recreate:
-        client.delete_collection(config.collection)
+        client.delete_collection(collection)
         exists = False
     if not exists:
         client.create_collection(
-            collection_name=config.collection,
-            # named dense vector (cosine) + named sparse vector (BM25 needs IDF)
+            collection_name=collection,
             vectors_config={
                 "dense": models.VectorParams(size=dim, distance=models.Distance.COSINE)
             },
@@ -38,10 +40,12 @@ def ensure_collection(client: QdrantClient, dim: int, recreate: bool = False):
         )
 
 
-def index_chunks(chunks: List[Chunk], recreate: bool = True, batch: int = 64) -> int:
+def index_chunks(chunks: List[Chunk], collection: Optional[str] = None,
+                 recreate: bool = True, batch: int = 64, client=None) -> int:
+    collection = collection or config.collection
     emb = Embedder()
-    client = get_client()
-    ensure_collection(client, emb.dense_dim, recreate=recreate)
+    client = client or get_client()
+    ensure_collection(client, emb.dense_dim, collection, recreate=recreate)
 
     for i in range(0, len(chunks), batch):
         part = chunks[i:i + batch]
@@ -70,5 +74,5 @@ def index_chunks(chunks: List[Chunk], recreate: bool = True, batch: int = 64) ->
                     },
                 )
             )
-        client.upsert(collection_name=config.collection, points=points)
+        client.upsert(collection_name=collection, points=points)
     return len(chunks)

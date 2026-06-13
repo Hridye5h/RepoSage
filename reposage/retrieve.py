@@ -33,9 +33,10 @@ class Hit:
 
 
 class Retriever:
-    def __init__(self):
-        self.emb = Embedder()
-        self.client = get_client()
+    def __init__(self, collection: Optional[str] = None, client=None, emb=None):
+        self.emb = emb or Embedder()
+        self.client = client or get_client()
+        self.collection = collection or config.collection
 
     def _sparse_vector(self, query: str) -> models.SparseVector:
         s = self.emb.embed_sparse_one(query)
@@ -44,19 +45,19 @@ class Retriever:
     def search(self, query: str, top_k: int = 8, prefetch_k: int = 25, mode: str = "hybrid") -> List[Hit]:
         if mode == "dense":
             result = self.client.query_points(
-                collection_name=config.collection,
+                collection_name=self.collection,
                 query=self.emb.embed_dense_one(query).tolist(),
                 using="dense", limit=top_k, with_payload=True,
             )
         elif mode == "sparse":
             result = self.client.query_points(
-                collection_name=config.collection,
+                collection_name=self.collection,
                 query=self._sparse_vector(query),
                 using="sparse", limit=top_k, with_payload=True,
             )
         else:  # hybrid: dense + BM25 prefetch, fused with RRF
             result = self.client.query_points(
-                collection_name=config.collection,
+                collection_name=self.collection,
                 prefetch=[
                     models.Prefetch(query=self.emb.embed_dense_one(query).tolist(),
                                     using="dense", limit=prefetch_k),

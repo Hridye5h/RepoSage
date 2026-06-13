@@ -2,7 +2,7 @@
 import os
 from typing import Iterator, List
 
-from .chunking import Chunk, chunk_code, lang_for
+from .chunking import Chunk, chunk_code, fixed_size_chunks, lang_for
 from .config import config
 
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", "env",
@@ -43,7 +43,10 @@ def _fallback_chunks(source: str, rel: str) -> List[Chunk]:
     return [c for c in out if c.text.strip()]
 
 
-def ingest_repo(root: str) -> List[Chunk]:
+def ingest_repo(root: str, chunker: str = "ast") -> List[Chunk]:
+    """chunker='ast' uses tree-sitter AST chunking; 'fixed' uses the naive
+    fixed-size baseline (for the eval comparison). Non-code files use line
+    windows either way."""
     root = os.path.abspath(root)
     chunks: List[Chunk] = []
     for path in iter_files(root):
@@ -58,7 +61,9 @@ def ingest_repo(root: str) -> List[Chunk]:
             continue
         rel = os.path.relpath(path, root).replace("\\", "/")
         lang = lang_for(path)
-        if lang:
+        if lang and chunker == "fixed":
+            chunks.extend(fixed_size_chunks(source, rel, lang, config.max_chunk_chars))
+        elif lang:
             try:
                 chunks.extend(chunk_code(source, rel, lang, config.max_chunk_chars))
             except Exception:

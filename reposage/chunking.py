@@ -160,3 +160,19 @@ def chunk_code(source: str, file_path: str, language: str, max_chars: int) -> Li
 
     process(_children(root), None)
     return chunks
+
+
+def fixed_size_chunks(source: str, file_path: str, language: str, max_chars: int) -> List[Chunk]:
+    """Naive baseline chunker: fixed-size CHARACTER windows that ignore code
+    structure (so they routinely cut functions and identifiers in half). This is
+    the 'bad' baseline AST chunking is designed to beat — the eval uses it to
+    prove the design choice with numbers."""
+    out: List[Chunk] = []
+    for i in range(0, len(source), max_chars):
+        seg = source[i:i + max_chars]
+        if not seg.strip():
+            continue
+        start_line = source.count("\n", 0, i) + 1
+        end_line = source.count("\n", 0, i + len(seg)) + 1
+        out.append(Chunk(seg, file_path, language, start_line, end_line, None))
+    return out
