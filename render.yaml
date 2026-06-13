@@ -1,0 +1,18 @@
+# Render blueprint — one free web service.
+# Set GEMINI_API_KEY in the Render dashboard (sync:false keeps it out of git).
+# REPOSAGE_INDEX_REPO=. makes the app index its own code on first request.
+# For a persistent index, set REPOSAGE_QDRANT_URL to a free Qdrant Cloud cluster.
+services:
+  - type: web
+    name: reposage
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn reposage.web:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: REPOSAGE_INDEX_REPO
+        value: "."
+      - key: PYTHON_VERSION
+        value: "3.12.10"

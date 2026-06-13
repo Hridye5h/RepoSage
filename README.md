@@ -65,6 +65,22 @@ pytest                                              # run the chunker tests
 
 The first index downloads small embedding models (~100 MB) once, then runs on CPU.
 
+## Web app
+
+```bash
+uvicorn reposage.web:app --port 8000      # then open http://localhost:8000
+```
+A single-page UI: ask a question, toggle **agentic mode**, and get a grounded answer
+with the file:line sources it used. Same logic as the CLI, exposed at `POST /api/ask`.
+
+## Deploy (Render)
+
+`render.yaml` defines a free web service. Set `GEMINI_API_KEY` in the dashboard and
+`REPOSAGE_INDEX_REPO=.` so the app indexes its own code on first request. Caveats: the
+free instance cold-starts slowly (it downloads the embedding model and indexes once),
+and the on-disk index is ephemeral — point `REPOSAGE_QDRANT_URL` at a free Qdrant Cloud
+cluster for a persistent index.
+
 ## Roadmap
 
 - [x] **Phase 1** — ingestion, AST-aware chunking, hybrid (dense + BM25) indexing
