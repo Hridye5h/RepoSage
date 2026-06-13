@@ -29,7 +29,7 @@ class Config:
 
     # --- Generation (Phase 2+). Default provider is Gemini (free tier). ---
     llm_provider: str = os.getenv("REPOSAGE_LLM_PROVIDER", "gemini")
-    gemini_model: str = os.getenv("REPOSAGE_GEMINI_MODEL", "gemini-2.0-flash")
+    gemini_model: str = os.getenv("REPOSAGE_GEMINI_MODEL", "gemini-2.5-flash")
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     anthropic_model: str = os.getenv("REPOSAGE_ANTHROPIC_MODEL", "claude-haiku-4-5")
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
