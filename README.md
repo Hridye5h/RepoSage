@@ -70,7 +70,7 @@ The first index downloads small embedding models (~100 MB) once, then runs on CP
 - [x] **Phase 1** — ingestion, AST-aware chunking, hybrid (dense + BM25) indexing
 - [x] **Phase 2** — hybrid retrieval + RRF + grounded, cited answers (Gemini free tier; provider-pluggable). Verified end-to-end.
 - [x] **Phase 3** — evaluation harness: retrieval metrics (Hit/MRR/Recall, AST-vs-fixed) + LLM-judged answer quality (faithfulness, relevancy).
-- [ ] **Phase 4** — selective agentic loop (LangGraph self-RAG)
+- [x] **Phase 4** — selective agentic loop (LangGraph self-RAG): a router sends simple queries to the fast path; complex ones get doc-relevance / groundedness / usefulness graders + query-rewrite + re-retrieve. (`ask --agentic`)
 - [ ] **Phase 5** — FastAPI + minimal web UI + deployment
 
 ## License

@@ -2,7 +2,8 @@
 
   python -m reposage.cli index <repo_path>     # ingest + chunk + index a repo
   python -m reposage.cli stats                  # show what's indexed
-  python -m reposage.cli ask "<question>"       # hybrid-retrieve and answer
+  python -m reposage.cli ask "<question>"            # hybrid-retrieve and answer
+  python -m reposage.cli ask "<question>" --agentic  # route hard queries through self-RAG
 """
 import sys
 import time
@@ -37,10 +38,21 @@ def cmd_stats():
     print(f"collection='{config.collection}'  points={info.points_count}")
 
 
-def cmd_ask(question: str):
+def cmd_ask(question: str, agentic: bool = False):
     from .retrieve import Retriever
 
-    hits = Retriever().search(question)
+    r = Retriever()
+
+    if agentic:
+        if not config.llm_ready:
+            print("agentic mode needs an LLM key in .env")
+            return
+        from .agentic import agentic_answer
+        ans, path = agentic_answer(question, r)
+        print(f"\n[routed: {path}]\n\n--- Answer ---\n{ans}")
+        return
+
+    hits = r.search(question)
     if not hits:
         print("No relevant code found — did you index a repo first?")
         return
@@ -70,7 +82,10 @@ def main():
     elif len(sys.argv) >= 2 and sys.argv[1] == "stats":
         cmd_stats()
     elif len(sys.argv) >= 3 and sys.argv[1] == "ask":
-        cmd_ask(" ".join(sys.argv[2:]))
+        args = sys.argv[2:]
+        agentic = "--agentic" in args
+        args = [a for a in args if a != "--agentic"]
+        cmd_ask(" ".join(args), agentic=agentic)
     else:
         print(__doc__)
         sys.exit(1)
