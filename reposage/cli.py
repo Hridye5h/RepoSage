@@ -50,8 +50,12 @@ def cmd_ask(question: str):
         sym = f"  ({h.symbol})" if h.symbol else ""
         print(f"  {h.score:.3f}  {h.file_path}:{h.start_line}-{h.end_line}{sym}")
 
-    if not config.anthropic_api_key:
-        print("\n[retrieval only — set ANTHROPIC_API_KEY in .env to generate an answer]")
+    if not config.llm_ready:
+        key = {"gemini": "GEMINI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}.get(
+            config.llm_provider, "an API key"
+        )
+        print(f"\n[retrieval only — set {key} in .env to generate an answer "
+              f"(provider={config.llm_provider})]")
         return
 
     from .generate import answer

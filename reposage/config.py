@@ -27,10 +27,24 @@ class Config:
     # context budgets (32-64 line chunks).
     max_chunk_chars: int = int(os.getenv("REPOSAGE_MAX_CHUNK_CHARS", "1500"))
 
-    # --- Generation (used from Phase 2) ---
-    llm_provider: str = os.getenv("REPOSAGE_LLM_PROVIDER", "anthropic")
+    # --- Generation (Phase 2+). Default provider is Gemini (free tier). ---
+    llm_provider: str = os.getenv("REPOSAGE_LLM_PROVIDER", "gemini")
+    gemini_model: str = os.getenv("REPOSAGE_GEMINI_MODEL", "gemini-2.0-flash")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     anthropic_model: str = os.getenv("REPOSAGE_ANTHROPIC_MODEL", "claude-haiku-4-5")
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
+
+    @property
+    def llm_ready(self) -> bool:
+        """Is a key available for the selected provider? (CLI uses this to decide
+        whether to generate an answer or stop at retrieval.)"""
+        if self.llm_provider == "gemini":
+            return bool(self.gemini_api_key)
+        if self.llm_provider == "anthropic":
+            return bool(self.anthropic_api_key)
+        if self.llm_provider == "ollama":
+            return True  # local, no key needed
+        return False
 
 
 config = Config()

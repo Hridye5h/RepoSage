@@ -36,6 +36,20 @@ def answer(query: str, hits: List[Hit]) -> str:
     context = build_context(hits)
     user = f"# Retrieved code context\n\n{context}\n\n# Question\n{query}"
 
+    if config.llm_provider == "gemini":
+        from google import genai
+        from google.genai import types
+
+        client = genai.Client(api_key=config.gemini_api_key)
+        resp = client.models.generate_content(
+            model=config.gemini_model,
+            contents=user,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM, max_output_tokens=1024
+            ),
+        )
+        return resp.text or ""
+
     if config.llm_provider == "anthropic":
         import anthropic
 
