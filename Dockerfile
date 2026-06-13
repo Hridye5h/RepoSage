@@ -9,6 +9,7 @@ ENV HOME=/tmp \
     FASTEMBED_CACHE_PATH=/app/.cache/fastembed \
     REPOSAGE_QDRANT_PATH=/app/qdrant_data \
     REPOSAGE_INDEX_REPO=/app/reposage \
+    REPOSAGE_SOURCE_BASE_URL=https://github.com/Hridye5h/RepoSage/blob/master/reposage \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 

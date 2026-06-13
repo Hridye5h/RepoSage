@@ -60,9 +60,11 @@ def ask(req: AskRequest):
         return {"answer": "", "sources": [], "path": "error",
                 "llm_ready": config.llm_ready, "error": f"{type(e).__name__}: {str(e)[:160]}"}
 
+    base = config.source_base_url.rstrip("/")
     sources = [
         {"file": h.file_path, "lines": f"{h.start_line}-{h.end_line}",
-         "symbol": h.symbol, "score": round(h.score, 3)}
+         "symbol": h.symbol, "score": round(h.score, 3),
+         "url": f"{base}/{h.file_path}#L{h.start_line}-L{h.end_line}" if base else ""}
         for h in hits
     ]
 
@@ -121,6 +123,7 @@ INDEX_HTML = """<!doctype html>
   .srcs h3{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:0 0 8px}
   .src{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#334155;padding:5px 0;border-bottom:1px solid #f1f5f9}
   .src b{color:var(--ink)} .muted{color:var(--muted)}
+  .src a{color:var(--primary);text-decoration:none} .src a:hover{text-decoration:underline}
   .hint{color:var(--muted);font-size:12.5px;margin-top:14px}
 </style></head><body>
 <div class="wrap">
@@ -160,7 +163,11 @@ async function ask(){
     else{html+='<p class="muted" style="margin-top:18px">No LLM key set — showing retrieved sources only.</p>';}
     if(d.sources&&d.sources.length){
       html+='<div class="srcs"><h3>Sources</h3>';
-      for(const s of d.sources){html+='<div class="src"><b>'+esc(s.file)+'</b>:'+s.lines+(s.symbol?' <span class="muted">('+esc(s.symbol)+')</span>':'')+' <span class="muted">· '+s.score+'</span></div>';}
+      for(const s of d.sources){
+        const lbl='<b>'+esc(s.file)+'</b>:'+s.lines;
+        const head=s.url?('<a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+lbl+' ↗</a>'):lbl;
+        html+='<div class="src">'+head+(s.symbol?' <span class="muted">('+esc(s.symbol)+')</span>':'')+' <span class="muted">· '+s.score+'</span></div>';
+      }
       html+='</div>';
     }
     out.innerHTML=html;

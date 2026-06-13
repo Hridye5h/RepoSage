@@ -36,6 +36,11 @@ class Config:
     anthropic_model: str = os.getenv("REPOSAGE_ANTHROPIC_MODEL", "claude-haiku-4-5")
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
 
+    # --- Source citations (web UI) ---
+    # If set, each cited source becomes a clickable link to the real code (e.g. a
+    # GitHub blob URL). The UI appends "/<file_path>#Lstart-Lend".
+    source_base_url: str = os.getenv("REPOSAGE_SOURCE_BASE_URL", "")
+
     @property
     def llm_ready(self) -> bool:
         """Is a key available for the selected provider? (CLI uses this to decide
