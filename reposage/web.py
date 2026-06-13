@@ -111,6 +111,9 @@ INDEX_HTML = """<!doctype html>
   button{cursor:pointer;border:0;border-radius:10px;color:#fff;font-weight:700;font-size:15px;padding:11px 22px;
          background:linear-gradient(135deg,var(--primary),var(--violet));box-shadow:0 6px 16px rgba(99,102,241,.3)}
   button:disabled{opacity:.55;cursor:default}
+  .examples{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .chip{background:#eef2ff;color:#4f46e5;border:1px solid #e0e7ff;border-radius:999px;font-size:12.5px;font-weight:600;padding:6px 12px;box-shadow:none}
+  .chip:hover{background:#e0e7ff}
   .answer{white-space:pre-wrap;line-height:1.6;font-size:15px;margin-top:18px}
   .badge{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
          color:#4f46e5;background:#eef2ff;border-radius:999px;padding:3px 10px;margin-bottom:10px}
@@ -122,9 +125,15 @@ INDEX_HTML = """<!doctype html>
 </style></head><body>
 <div class="wrap">
   <header><div class="mark">🧙</div><div><h1>RepoSage</h1></div></header>
-  <p class="sub">Ask about the indexed codebase. Answers are grounded in the actual source, with file:line citations.</p>
+  <p class="sub">This demo is indexed on <b>RepoSage's own source code</b> — ask about how <i>it</i> works. Answers are grounded in the actual source, with file:line citations.</p>
   <div class="card">
-    <textarea id="q" placeholder="e.g. How is authentication implemented? How are atomic transfers done?"></textarea>
+    <textarea id="q" placeholder="e.g. How does the AST chunker keep functions intact?"></textarea>
+    <div class="examples">
+      <button class="chip" onclick="fillEx(this)">How does the AST chunker keep functions intact?</button>
+      <button class="chip" onclick="fillEx(this)">How is hybrid retrieval implemented?</button>
+      <button class="chip" onclick="fillEx(this)">How does the agentic loop decide to rewrite a query?</button>
+      <button class="chip" onclick="fillEx(this)">What metrics does the eval harness compute?</button>
+    </div>
     <div class="row">
       <label class="tog"><input type="checkbox" id="agentic"> agentic mode (self-RAG loop for hard questions)</label>
       <button id="go" onclick="ask()">Ask</button>
@@ -144,7 +153,10 @@ async function ask(){
       body:JSON.stringify({question:q,agentic})});
     const d=await res.json();
     let html='';
-    if(d.answer){html+='<span class="badge">routed: '+d.path+'</span><div class="answer">'+esc(d.answer)+'</div>';}
+    if(d.answer){
+      const label=(d.path==='baseline'||d.path==='agentic')?('routed: '+d.path):d.path;
+      html+='<span class="badge">'+esc(label)+'</span><div class="answer">'+esc(d.answer)+'</div>';
+    }
     else{html+='<p class="muted" style="margin-top:18px">No LLM key set — showing retrieved sources only.</p>';}
     if(d.sources&&d.sources.length){
       html+='<div class="srcs"><h3>Sources</h3>';
@@ -155,6 +167,7 @@ async function ask(){
   }catch(e){out.innerHTML='<p class="muted" style="margin-top:18px">Error: '+esc(String(e))+'</p>';}
   btn.disabled=false;
 }
+function fillEx(b){const q=document.getElementById('q');q.value=b.textContent;q.focus();}
 function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey))ask();});
 </script>
