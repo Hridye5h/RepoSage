@@ -2,11 +2,14 @@
 
 WHY HYBRID (the interview answer):
 - Dense embeddings capture meaning -> great for "where is auth handled?" (natural
-  language -> code), which is the dominant "chat with codebase" case.
+  language -> code), the dominant "chat with codebase" case.
 - BM25 sparse matches exact tokens -> catches a specific symbol name like
   `getSignedJwtToken` that a dense model might paraphrase away.
 Fusing both with RRF (the de-facto standard) gets the best of each. Qdrant's
 Query API does the prefetch + fusion in ONE server-side call.
+
+`mode` ("hybrid"|"dense"|"sparse") exists so the eval harness can prove the
+hybrid design beats either retriever alone — same index, different query.
 """
 from dataclasses import dataclass
 from typing import List, Optional
@@ -34,29 +37,35 @@ class Retriever:
         self.emb = Embedder()
         self.client = get_client()
 
-    def search(self, query: str, top_k: int = 8, prefetch_k: int = 25) -> List[Hit]:
-        dense = self.emb.embed_dense_one(query).tolist()
-        sparse = self.emb.embed_sparse_one(query)
+    def _sparse_vector(self, query: str) -> models.SparseVector:
+        s = self.emb.embed_sparse_one(query)
+        return models.SparseVector(indices=s.indices.tolist(), values=s.values.tolist())
 
-        result = self.client.query_points(
-            collection_name=config.collection,
-            prefetch=[
-                # branch 1: dense semantic search
-                models.Prefetch(query=dense, using="dense", limit=prefetch_k),
-                # branch 2: BM25 keyword search
-                models.Prefetch(
-                    query=models.SparseVector(
-                        indices=sparse.indices.tolist(), values=sparse.values.tolist()
-                    ),
-                    using="sparse",
-                    limit=prefetch_k,
-                ),
-            ],
-            # fuse the two ranked lists with Reciprocal Rank Fusion
-            query=models.FusionQuery(fusion=models.Fusion.RRF),
-            limit=top_k,
-            with_payload=True,
-        )
+    def search(self, query: str, top_k: int = 8, prefetch_k: int = 25, mode: str = "hybrid") -> List[Hit]:
+        if mode == "dense":
+            result = self.client.query_points(
+                collection_name=config.collection,
+                query=self.emb.embed_dense_one(query).tolist(),
+                using="dense", limit=top_k, with_payload=True,
+            )
+        elif mode == "sparse":
+            result = self.client.query_points(
+                collection_name=config.collection,
+                query=self._sparse_vector(query),
+                using="sparse", limit=top_k, with_payload=True,
+            )
+        else:  # hybrid: dense + BM25 prefetch, fused with RRF
+            result = self.client.query_points(
+                collection_name=config.collection,
+                prefetch=[
+                    models.Prefetch(query=self.emb.embed_dense_one(query).tolist(),
+                                    using="dense", limit=prefetch_k),
+                    models.Prefetch(query=self._sparse_vector(query),
+                                    using="sparse", limit=prefetch_k),
+                ],
+                query=models.FusionQuery(fusion=models.Fusion.RRF),
+                limit=top_k, with_payload=True,
+            )
 
         hits: List[Hit] = []
         for p in result.points:

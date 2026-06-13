@@ -34,12 +34,29 @@ repo ──▶ walk files ─▶ AST chunk ─▶ embed   query ─▶ embed ─
                        (dense + sparse vectors)
 ```
 
+## Evaluation
+
+Retrieval quality on a 10-question golden set over a real repo — the metric that
+separates this from a "chatbot with GPT". Same index, three retrieval modes:
+
+| Mode | Hit@8 | MRR | Recall@8 |
+|---|---|---|---|
+| BM25 (sparse) | 1.00 | 0.598 | 1.00 |
+| Dense | 1.00 | 0.753 | 1.00 |
+| **Hybrid + RRF** | **1.00** | **0.808** | **1.00** |
+
+Every mode finds the right file within the top 8, but **hybrid ranks it highest**
+(MRR 0.81 vs 0.60 sparse / 0.75 dense) — proving the dense+BM25+RRF design rather
+than asserting it. Reproduce: `python -m reposage.eval.retrieval_eval`.
+
+_(Next: LLM-judged answer metrics via RAGAS — faithfulness, context precision/recall, answer relevancy.)_
+
 ## Quickstart
 
 ```bash
 python -m venv .venv && .venv/Scripts/activate     # (Linux/Mac: source .venv/bin/activate)
 pip install -r requirements.txt
-cp .env.example .env                                # add your ANTHROPIC_API_KEY (needed Phase 2)
+cp .env.example .env                                # add your free GEMINI_API_KEY (aistudio.google.com)
 
 python -m reposage.cli index <path-to-a-repo>       # index a codebase
 python -m reposage.cli stats                        # how many chunks are indexed
@@ -51,8 +68,8 @@ The first index downloads small embedding models (~100 MB) once, then runs on CP
 ## Roadmap
 
 - [x] **Phase 1** — ingestion, AST-aware chunking, hybrid (dense + BM25) indexing
-- [x] **Phase 2** — hybrid retrieval + RRF + grounded, cited answers (Claude). Retrieval verified; add `ANTHROPIC_API_KEY` to `.env` for the answer step.
-- [ ] **Phase 3** — RAGAS evaluation harness + golden question set + config comparison
+- [x] **Phase 2** — hybrid retrieval + RRF + grounded, cited answers (Gemini free tier; provider-pluggable). Verified end-to-end.
+- [~] **Phase 3** — evaluation harness. Retrieval metrics (table above) done; RAGAS answer-quality (faithfulness, relevancy) next.
 - [ ] **Phase 4** — selective agentic loop (LangGraph self-RAG)
 - [ ] **Phase 5** — FastAPI + minimal web UI + deployment
 
