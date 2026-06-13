@@ -1,0 +1,9 @@
+# --- Phase 1: ingestion + chunking + indexing ---
+tree-sitter>=0.23.0
+tree-sitter-language-pack>=0.7.0
+fastembed>=0.4.0
+qdrant-client>=1.12.0
+python-dotenv>=1.0.0
+
+# --- Phase 2: generation (used soon) ---
+anthropic>=0.40.0
