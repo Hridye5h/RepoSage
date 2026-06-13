@@ -51,33 +51,39 @@ def health():
 
 @app.post("/api/ask")
 def ask(req: AskRequest):
+    # Retrieval uses NO LLM quota — do it first so we can always show the relevant
+    # code, even when generation is rate-limited (graceful degradation).
     try:
         r = get_retriever()
         hits = r.search(req.question, top_k=8)
-        answer_text, path = "", "retrieval-only"
+    except Exception as e:
+        return {"answer": "", "sources": [], "path": "error",
+                "llm_ready": config.llm_ready, "error": f"{type(e).__name__}: {str(e)[:160]}"}
 
-        if config.llm_ready:
+    sources = [
+        {"file": h.file_path, "lines": f"{h.start_line}-{h.end_line}",
+         "symbol": h.symbol, "score": round(h.score, 3)}
+        for h in hits
+    ]
+
+    answer_text, path = "", "retrieval-only"
+    if config.llm_ready:
+        try:
             if req.agentic:
                 from .agentic import agentic_answer
                 answer_text, path = agentic_answer(req.question, r)
             else:
                 from .generate import answer
                 answer_text, path = answer(req.question, hits), "baseline"
+        except Exception:
+            # LLM rate-limited/down on the free tier — still return the retrieved
+            # code so the demo never looks broken.
+            answer_text = ("⚠️ The hosted model is rate-limited on the free tier right now, so I "
+                           "can't write a summary — but here are the most relevant code sections "
+                           "for your question (retrieval needs no LLM quota). Try again shortly.")
+            path = "rate-limited"
 
-        sources = [
-            {"file": h.file_path, "lines": f"{h.start_line}-{h.end_line}",
-             "symbol": h.symbol, "score": round(h.score, 3)}
-            for h in hits
-        ]
-        return {"answer": answer_text, "sources": sources, "path": path, "llm_ready": config.llm_ready}
-    except Exception as e:
-        # Always return JSON (never a 500 HTML page) so the UI shows a clean message.
-        return {
-            "answer": "⚠️ The model is briefly overloaded (free-tier limit). Please try again "
-                      "in a moment — or uncheck 'agentic mode', which makes many calls per query.",
-            "sources": [], "path": "error", "llm_ready": config.llm_ready,
-            "error": f"{type(e).__name__}: {str(e)[:160]}",
-        }
+    return {"answer": answer_text, "sources": sources, "path": path, "llm_ready": config.llm_ready}
 
 
 @app.get("/", response_class=HTMLResponse)
